@@ -21,129 +21,320 @@ st.markdown("*Real-time stock data with technical indicators and stock discovery
 st.sidebar.header("Navigation")
 page = st.sidebar.radio("Select Mode", ["🔍 Discover Stocks", "📊 Analyze Stock"])
 
-# Stock categories with curated lists
-STOCK_CATEGORIES = {
-    "🔥 Trending Now": {
-        "description": "Most talked about and actively traded stocks",
-        "tickers": ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AMD', 'NFLX', 'AVGO']
+# Stock universe for real-time calculations (~300 most liquid stocks)
+STOCK_UNIVERSE = [
+    # Mega Cap Tech
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AVGO', 'ORCL', 'AMD',
+    'CRM', 'ADBE', 'CSCO', 'ACN', 'NFLX', 'INTC', 'QCOM', 'TXN', 'INTU', 'IBM',
+    # Financial Services
+    'BRK-B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'GS', 'MS', 'SCHW', 'BLK', 'C', 'AXP',
+    'SPGI', 'CB', 'PGR', 'MMC', 'USB', 'PNC', 'BK', 'TFC',
+    # Healthcare
+    'UNH', 'LLY', 'JNJ', 'ABBV', 'MRK', 'TMO', 'ABT', 'DHR', 'PFE', 'BMY',
+    'AMGN', 'GILD', 'CVS', 'CI', 'ISRG', 'REGN', 'VRTX', 'ZTS', 'BSX', 'ELV',
+    # Consumer
+    'WMT', 'HD', 'COST', 'PG', 'KO', 'PEP', 'MCD', 'NKE', 'SBUX', 'TGT',
+    'LOW', 'TJX', 'EL', 'MDLZ', 'CL', 'KMB', 'GIS', 'HSY', 'CLX', 'SJM',
+    # Industrial
+    'BA', 'CAT', 'HON', 'UPS', 'RTX', 'GE', 'LMT', 'DE', 'MMM', 'UNP',
+    'ADP', 'ITW', 'EMR', 'FDX', 'NSC', 'CSX', 'WM', 'PH', 'ETN', 'GD',
+    # Energy
+    'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL',
+    'KMI', 'WMB', 'HES', 'BKR', 'FANG', 'DVN', 'MRO', 'APA', 'OVV', 'CTRA',
+    # Communication Services
+    'DIS', 'CMCSA', 'NFLX', 'T', 'VZ', 'TMUS', 'WBD', 'EA', 'TTWO', 'SPOT',
+    # High Growth Tech
+    'PLTR', 'SNOW', 'CRWD', 'DKNG', 'COIN', 'RBLX', 'U', 'MNDY', 'NET', 'DDOG',
+    'ZS', 'PANW', 'NOW', 'WDAY', 'TEAM', 'ZM', 'DOCU', 'FTNT', 'OKTA', 'MDB',
+    # Semiconductors
+    'TSM', 'ASML', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'MCHP', 'ADI', 'NXPI', 'ON',
+    # Biotech
+    'MRNA', 'BIIB', 'ILMN', 'ALNY', 'INCY', 'SGEN', 'EXAS', 'NBIX', 'TECH', 'RARE',
+    # Retail & E-commerce
+    'AMZN', 'BABA', 'JD', 'MELI', 'SE', 'SHOP', 'EBAY', 'ETSY', 'W', 'CHWY',
+    # Automotive
+    'TSLA', 'F', 'GM', 'RIVN', 'LCID', 'NIO', 'XPEV', 'LI', 'STLA', 'HMC',
+    # Finance Tech
+    'PYPL', 'SQ', 'AFRM', 'SOFI', 'NU', 'COIN', 'MSTR', 'HOOD', 'UPST', 'LC',
+    # Real Estate
+    'AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'SPG', 'O', 'WELL', 'DLR', 'AVB',
+    # Materials
+    'LIN', 'APD', 'SHW', 'ECL', 'DD', 'NEM', 'FCX', 'VMC', 'MLM', 'NUE',
+    # Utilities
+    'NEE', 'DUK', 'SO', 'D', 'AEP', 'EXC', 'SRE', 'XEL', 'ES', 'PEG',
+    # Consumer Discretionary
+    'AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'SBUX', 'TJX', 'LOW', 'BKNG', 'MAR',
+    # Aerospace & Defense
+    'BA', 'RTX', 'LMT', 'GD', 'NOC', 'HWM', 'TDG', 'LHX', 'TXT', 'HII',
+    # Healthcare Equipment
+    'TMO', 'ABT', 'DHR', 'ISRG', 'BSX', 'SYK', 'EW', 'BDX', 'RMD', 'IDXX',
+    # Entertainment & Media
+    'DIS', 'NFLX', 'CMCSA', 'WBD', 'PARA', 'FOX', 'FOXA', 'LYV', 'MSG', 'MSGS',
+    # Clean Energy
+    'ENPH', 'SEDG', 'FSLR', 'RUN', 'NOVA', 'PLUG', 'BE', 'BLNK', 'CHPT', 'QS'
+]
+
+# Dynamic category definitions (calculated in real-time)
+DYNAMIC_CATEGORIES = {
+    "📈 Top Gainers Today": {
+        "description": "Highest percentage gainers in the current session",
+        "type": "dynamic",
+        "filter": "top_gainers"
     },
-    "📈 Top Gainers": {
-        "description": "Stocks showing strong recent performance",
-        "tickers": ['NVDA', 'AVGO', 'TSLA', 'COIN', 'MARA', 'RIOT', 'PLTR', 'SMCI', 'ARM', 'CELH']
+    "📉 Top Losers Today": {
+        "description": "Largest percentage decliners in the current session",
+        "type": "dynamic",
+        "filter": "top_losers"
     },
-    "💎 High Growth": {
-        "description": "Fast-growing companies with high potential",
-        "tickers": ['PLTR', 'SNOW', 'DKNG', 'COIN', 'RBLX', 'U', 'CELH', 'MNDY', 'CRWD', 'NET']
+    "🔥 Most Active": {
+        "description": "Highest volume compared to average (volume surge)",
+        "type": "dynamic",
+        "filter": "most_active"
     },
-    "💰 Blue Chips": {
-        "description": "Large, stable, established companies",
-        "tickers": ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'BRK-B', 'JPM', 'V', 'MA', 'JNJ', 'PG']
+    "⚡ Breakout Stocks": {
+        "description": "Price above 20-day SMA with volume surge",
+        "type": "dynamic",
+        "filter": "breakout"
     },
-    "🏦 Value Stocks": {
-        "description": "Undervalued stocks with strong fundamentals",
-        "tickers": ['BRK-B', 'JPM', 'BAC', 'WFC', 'CVX', 'XOM', 'KO', 'PEP', 'WMT', 'HD']
+    "💎 Oversold Opportunities": {
+        "description": "RSI below 30 - potentially undervalued",
+        "type": "dynamic",
+        "filter": "oversold"
     },
-    "🤖 AI & Tech": {
-        "description": "Artificial Intelligence and Technology leaders",
-        "tickers": ['NVDA', 'AMD', 'GOOGL', 'MSFT', 'META', 'AVGO', 'PLTR', 'SNOW', 'CRWD', 'NET']
+    "🚀 Momentum Leaders": {
+        "description": "Strongest 5-day momentum with high volume",
+        "type": "dynamic",
+        "filter": "momentum"
     },
-    "⚡ Momentum": {
-        "description": "Stocks with strong price momentum",
-        "tickers": ['NVDA', 'AVGO', 'SMCI', 'ARM', 'PLTR', 'COIN', 'MSTR', 'TSLA', 'CELH', 'VST']
+    "🏆 52-Week High Breakers": {
+        "description": "Stocks near or at 52-week highs",
+        "type": "dynamic",
+        "filter": "high_breakers"
     },
-    "💵 Dividend Payers": {
-        "description": "Reliable dividend-paying stocks",
-        "tickers": ['JNJ', 'PG', 'KO', 'PEP', 'MCD', 'VZ', 'T', 'XOM', 'CVX', 'ABBV']
-    },
-    "🚗 Consumer & Retail": {
-        "description": "Consumer goods and retail companies",
-        "tickers": ['TSLA', 'AMZN', 'WMT', 'HD', 'TGT', 'NKE', 'SBUX', 'MCD', 'COST', 'LOW']
-    },
-    "💊 Healthcare": {
-        "description": "Healthcare and biotech companies",
-        "tickers": ['JNJ', 'UNH', 'LLY', 'ABBV', 'MRK', 'PFE', 'TMO', 'ABT', 'DHR', 'ISRG']
-    },
-    "🏭 Industrials": {
-        "description": "Manufacturing and industrial companies",
-        "tickers": ['BA', 'CAT', 'GE', 'HON', 'UPS', 'RTX', 'LMT', 'MMM', 'DE', 'EMR']
-    },
-    "⚡ Energy": {
-        "description": "Oil, gas, and renewable energy companies",
-        "tickers": ['XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL']
-    },
-    "🏠 Real Estate": {
-        "description": "REITs and real estate companies",
-        "tickers": ['AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'SPG', 'O', 'WELL', 'DLR', 'AVB']
-    },
-    "💳 Financials": {
-        "description": "Banks, insurance, and financial services",
-        "tickers": ['JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'SCHW', 'AXP', 'USB']
-    },
-    "🎮 Entertainment": {
-        "description": "Gaming, streaming, and entertainment",
-        "tickers": ['NFLX', 'DIS', 'RBLX', 'EA', 'TTWO', 'DKNG', 'WBD', 'PARA', 'LYV', 'SPOT']
-    },
-    "🔐 Cybersecurity": {
-        "description": "Cybersecurity and data protection",
-        "tickers": ['CRWD', 'PANW', 'ZS', 'FTNT', 'S', 'OKTA', 'NET', 'CHKP', 'CYBR', 'RPD']
-    },
-    "☁️ Cloud Computing": {
-        "description": "Cloud infrastructure and services",
-        "tickers": ['MSFT', 'AMZN', 'GOOGL', 'SNOW', 'CRM', 'ORCL', 'NOW', 'DDOG', 'MDB', 'NET']
-    },
-    "🔋 Clean Energy": {
-        "description": "Renewable energy and EVs",
-        "tickers": ['TSLA', 'ENPH', 'SEDG', 'FSLR', 'NEE', 'BEP', 'PLUG', 'RUN', 'NOVA', 'RIVN']
+    "🎯 Value Plays": {
+        "description": "Low P/E ratio stocks with positive momentum",
+        "type": "dynamic",
+        "filter": "value"
     }
 }
 
-# Function to get stocks by category
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def get_stocks_by_category(category_name):
-    """Get stocks for a specific category"""
-    try:
-        tickers = STOCK_CATEGORIES[category_name]["tickers"]
-        
-        stocks_data = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        for idx, ticker in enumerate(tickers):
-            try:
-                status_text.text(f"Loading {ticker}... ({idx + 1}/{len(tickers)})")
-                stock = yf.Ticker(ticker)
-                hist = stock.history(period="5d")
+# Static curated categories (pre-selected tickers)
+STATIC_CATEGORIES = {
+    "💰 Blue Chips": {
+        "description": "Large, stable, established companies",
+        "type": "static",
+        "tickers": ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'BRK-B', 'JPM', 'V', 'MA', 'JNJ', 'PG']
+    },
+    "🤖 AI & Tech Leaders": {
+        "description": "Artificial Intelligence and Technology powerhouses",
+        "type": "static",
+        "tickers": ['NVDA', 'AMD', 'GOOGL', 'MSFT', 'META', 'AVGO', 'PLTR', 'SNOW', 'CRWD', 'NET']
+    },
+    "💵 Dividend Champions": {
+        "description": "Reliable dividend-paying stocks",
+        "type": "static",
+        "tickers": ['JNJ', 'PG', 'KO', 'PEP', 'MCD', 'VZ', 'T', 'XOM', 'CVX', 'ABBV']
+    },
+    "🔋 Clean Energy": {
+        "description": "Renewable energy and EV companies",
+        "type": "static",
+        "tickers": ['TSLA', 'ENPH', 'SEDG', 'FSLR', 'NEE', 'PLUG', 'RUN', 'NOVA', 'RIVN', 'LCID']
+    },
+    "🎮 Entertainment & Gaming": {
+        "description": "Gaming, streaming, and entertainment",
+        "type": "static",
+        "tickers": ['NFLX', 'DIS', 'RBLX', 'EA', 'TTWO', 'DKNG', 'WBD', 'SPOT', 'LYV', 'PARA']
+    },
+    "🔐 Cybersecurity": {
+        "description": "Cybersecurity and data protection leaders",
+        "type": "static",
+        "tickers": ['CRWD', 'PANW', 'ZS', 'FTNT', 'OKTA', 'NET', 'S', 'CHKP', 'CYBR', 'RPD']
+    },
+    "☁️ Cloud Computing": {
+        "description": "Cloud infrastructure and SaaS",
+        "type": "static",
+        "tickers": ['MSFT', 'AMZN', 'GOOGL', 'SNOW', 'CRM', 'ORCL', 'NOW', 'DDOG', 'MDB', 'NET']
+    },
+    "💊 Healthcare Leaders": {
+        "description": "Healthcare and biotech companies",
+        "type": "static",
+        "tickers": ['JNJ', 'UNH', 'LLY', 'ABBV', 'MRK', 'PFE', 'TMO', 'ABT', 'DHR', 'ISRG']
+    }
+}
+
+# Function to calculate stock universe data
+@st.cache_data(ttl=1800)  # Cache for 30 minutes
+def calculate_stock_universe():
+    """Calculate metrics for entire stock universe"""
+    stocks_data = []
+    
+    # Remove duplicates from universe
+    unique_tickers = list(set(STOCK_UNIVERSE))
+    
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    for idx, ticker in enumerate(unique_tickers):
+        try:
+            status_text.text(f"Loading {ticker}... ({idx + 1}/{len(unique_tickers)})")
+            stock = yf.Ticker(ticker)
+            
+            # Get historical data
+            hist_5d = stock.history(period="5d")
+            hist_20d = stock.history(period="1mo")
+            hist_1y = stock.history(period="1y")
+            
+            if len(hist_5d) >= 2 and len(hist_20d) >= 5:
                 info = stock.info
                 
-                if len(hist) >= 2:
-                    current_price = hist['Close'].iloc[-1]
-                    prev_price = hist['Close'].iloc[0]
-                    change_pct = ((current_price - prev_price) / prev_price) * 100
-                    volume = hist['Volume'].iloc[-1]
-                    avg_volume = hist['Volume'].mean()
-                    
-                    stocks_data.append({
-                        'Ticker': ticker,
-                        'Name': info.get('shortName', ticker)[:30],
-                        'Price': current_price,
-                        'Change %': change_pct,
-                        'Volume': volume,
-                        'Avg Volume': avg_volume,
-                        'Market Cap': info.get('marketCap', 0),
-                        'Sector': info.get('sector', 'N/A'),
-                        'PE Ratio': info.get('trailingPE', None)
-                    })
-                progress_bar.progress((idx + 1) / len(tickers))
-            except:
-                continue
-        
-        progress_bar.empty()
-        status_text.empty()
-        
-        return pd.DataFrame(stocks_data)
-    except Exception as e:
-        st.error(f"Error fetching stocks: {str(e)}")
-        return pd.DataFrame()
+                # Current values
+                current_price = hist_5d['Close'].iloc[-1]
+                prev_close = hist_5d['Close'].iloc[0]
+                
+                # Calculate metrics
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+                volume = hist_5d['Volume'].iloc[-1]
+                avg_volume = hist_20d['Volume'].mean()
+                volume_ratio = volume / avg_volume if avg_volume > 0 else 0
+                
+                # Calculate SMA
+                sma_20 = hist_20d['Close'].rolling(window=20).mean().iloc[-1] if len(hist_20d) >= 20 else current_price
+                above_sma = current_price > sma_20
+                
+                # Calculate RSI
+                delta = hist_20d['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                rsi = (100 - (100 / (1 + rs))).iloc[-1] if len(gain) >= 14 else 50
+                
+                # 52-week high
+                if len(hist_1y) > 0:
+                    week_52_high = hist_1y['High'].max()
+                    pct_from_high = ((current_price - week_52_high) / week_52_high) * 100
+                else:
+                    week_52_high = current_price
+                    pct_from_high = 0
+                
+                stocks_data.append({
+                    'Ticker': ticker,
+                    'Name': info.get('shortName', ticker)[:30],
+                    'Price': current_price,
+                    'Change %': change_pct,
+                    'Volume': volume,
+                    'Avg Volume': avg_volume,
+                    'Volume Ratio': volume_ratio,
+                    'Market Cap': info.get('marketCap', 0),
+                    'Sector': info.get('sector', 'N/A'),
+                    'PE Ratio': info.get('trailingPE', None),
+                    'SMA 20': sma_20,
+                    'Above SMA': above_sma,
+                    'RSI': rsi,
+                    '52W High': week_52_high,
+                    '% From 52W High': pct_from_high
+                })
+                
+            progress_bar.progress((idx + 1) / len(unique_tickers))
+        except Exception as e:
+            # Skip stocks that fail to load
+            continue
+    
+    progress_bar.empty()
+    status_text.empty()
+    
+    return pd.DataFrame(stocks_data)
+
+# Function to filter stocks by dynamic category
+def filter_by_category(df, category_filter):
+    """Filter stocks based on dynamic category criteria"""
+    if category_filter == "top_gainers":
+        return df.nlargest(20, 'Change %')
+    
+    elif category_filter == "top_losers":
+        return df.nsmallest(20, 'Change %')
+    
+    elif category_filter == "most_active":
+        # Highest volume relative to average
+        return df.nlargest(20, 'Volume Ratio')
+    
+    elif category_filter == "breakout":
+        # Above 20-day SMA with volume surge
+        breakout = df[(df['Above SMA'] == True) & (df['Volume Ratio'] > 1.5)]
+        return breakout.nlargest(20, 'Volume Ratio')
+    
+    elif category_filter == "oversold":
+        # RSI below 30
+        oversold = df[df['RSI'] < 30]
+        return oversold.sort_values('RSI')
+    
+    elif category_filter == "momentum":
+        # Positive change with high volume
+        momentum = df[(df['Change %'] > 0) & (df['Volume Ratio'] > 1.2)]
+        return momentum.nlargest(20, 'Change %')
+    
+    elif category_filter == "high_breakers":
+        # Within 5% of 52-week high
+        near_high = df[df['% From 52W High'] > -5]
+        return near_high.sort_values('% From 52W High', ascending=False).head(20)
+    
+    elif category_filter == "value":
+        # Low P/E with positive momentum
+        value = df[(df['PE Ratio'].notna()) & (df['PE Ratio'] > 0) & (df['PE Ratio'] < 20) & (df['Change %'] > 0)]
+        return value.sort_values('PE Ratio').head(20)
+    
+    return df
+
+# Function to get stocks for static categories
+@st.cache_data(ttl=1800)
+def get_static_category_stocks(tickers):
+    """Get data for a static list of tickers"""
+    stocks_data = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    for idx, ticker in enumerate(tickers):
+        try:
+            status_text.text(f"Loading {ticker}... ({idx + 1}/{len(tickers)})")
+            stock = yf.Ticker(ticker)
+            hist = stock.history(period="5d")
+            hist_20d = stock.history(period="1mo")
+            info = stock.info
+            
+            if len(hist) >= 2:
+                current_price = hist['Close'].iloc[-1]
+                prev_price = hist['Close'].iloc[0]
+                change_pct = ((current_price - prev_price) / prev_price) * 100
+                volume = hist['Volume'].iloc[-1]
+                avg_volume = hist_20d['Volume'].mean()
+                
+                # Calculate RSI
+                delta = hist_20d['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                rsi = (100 - (100 / (1 + rs))).iloc[-1] if len(gain) >= 14 else 50
+                
+                stocks_data.append({
+                    'Ticker': ticker,
+                    'Name': info.get('shortName', ticker)[:30],
+                    'Price': current_price,
+                    'Change %': change_pct,
+                    'Volume': volume,
+                    'Avg Volume': avg_volume,
+                    'Volume Ratio': volume / avg_volume if avg_volume > 0 else 0,
+                    'Market Cap': info.get('marketCap', 0),
+                    'Sector': info.get('sector', 'N/A'),
+                    'PE Ratio': info.get('trailingPE', None),
+                    'RSI': rsi
+                })
+            progress_bar.progress((idx + 1) / len(tickers))
+        except:
+            continue
+    
+    progress_bar.empty()
+    status_text.empty()
+    
+    return pd.DataFrame(stocks_data)
 
 # Function to calculate SMA
 def calculate_sma(data, period):

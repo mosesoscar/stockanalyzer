@@ -8,10 +8,21 @@ A professional-grade, beginner-friendly stock analysis application built with St
 
 ## ✨ Features
 
-### 📊 Real-Time Data
-- Live stock prices from Yahoo Finance
-- Historical data from 1 month to 5 years
-- Automatic updates and error handling
+### 📊 Real-Time Stock Discovery
+- **Dynamic Categories** - Calculated in real-time from 300+ liquid stocks:
+  - 📈 Top Gainers Today
+  - 📉 Top Losers Today  
+  - 🔥 Most Active (volume surge)
+  - ⚡ Breakout Stocks (price above SMA + volume)
+  - 💎 Oversold Opportunities (RSI < 30)
+  - 🚀 Momentum Leaders
+  - 🏆 52-Week High Breakers
+  - 🎯 Value Plays (low P/E + positive momentum)
+
+- **Curated Categories** - Pre-selected quality stock lists:
+  - 💰 Blue Chips, 🤖 AI & Tech, 💵 Dividend Champions
+  - 🔋 Clean Energy, 🎮 Entertainment, 🔐 Cybersecurity
+  - ☁️ Cloud Computing, 💊 Healthcare Leaders
 
 ### 📉 Technical Indicators
 - **SMA (Simple Moving Average)** - Trend identification with customizable periods
