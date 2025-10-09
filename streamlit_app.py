@@ -636,4 +636,4 @@ else:
 # Footer
 st.markdown("---")
 st.caption(f"Data updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Data source: Yahoo Finance")
-st.caption("⚠️ Disclaimer: This is for educational purposes only. Not financial advice. Always do your own research before investing.")git 
+st.caption("⚠️ Disclaimer: This is for educational purposes only. Not financial advice. Always do your own research before investing.")
