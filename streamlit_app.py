@@ -21,21 +21,96 @@ st.markdown("*Real-time stock data with technical indicators and stock discovery
 st.sidebar.header("Navigation")
 page = st.sidebar.radio("Select Mode", ["🔍 Discover Stocks", "📊 Analyze Stock"])
 
-# Function to get trending stocks
+# Stock categories with curated lists
+STOCK_CATEGORIES = {
+    "🔥 Trending Now": {
+        "description": "Most talked about and actively traded stocks",
+        "tickers": ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AMD', 'NFLX', 'AVGO']
+    },
+    "📈 Top Gainers": {
+        "description": "Stocks showing strong recent performance",
+        "tickers": ['NVDA', 'AVGO', 'TSLA', 'COIN', 'MARA', 'RIOT', 'PLTR', 'SMCI', 'ARM', 'CELH']
+    },
+    "💎 High Growth": {
+        "description": "Fast-growing companies with high potential",
+        "tickers": ['PLTR', 'SNOW', 'DKNG', 'COIN', 'RBLX', 'U', 'CELH', 'MNDY', 'CRWD', 'NET']
+    },
+    "💰 Blue Chips": {
+        "description": "Large, stable, established companies",
+        "tickers": ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'BRK-B', 'JPM', 'V', 'MA', 'JNJ', 'PG']
+    },
+    "🏦 Value Stocks": {
+        "description": "Undervalued stocks with strong fundamentals",
+        "tickers": ['BRK-B', 'JPM', 'BAC', 'WFC', 'CVX', 'XOM', 'KO', 'PEP', 'WMT', 'HD']
+    },
+    "🤖 AI & Tech": {
+        "description": "Artificial Intelligence and Technology leaders",
+        "tickers": ['NVDA', 'AMD', 'GOOGL', 'MSFT', 'META', 'AVGO', 'PLTR', 'SNOW', 'CRWD', 'NET']
+    },
+    "⚡ Momentum": {
+        "description": "Stocks with strong price momentum",
+        "tickers": ['NVDA', 'AVGO', 'SMCI', 'ARM', 'PLTR', 'COIN', 'MSTR', 'TSLA', 'CELH', 'VST']
+    },
+    "💵 Dividend Payers": {
+        "description": "Reliable dividend-paying stocks",
+        "tickers": ['JNJ', 'PG', 'KO', 'PEP', 'MCD', 'VZ', 'T', 'XOM', 'CVX', 'ABBV']
+    },
+    "🚗 Consumer & Retail": {
+        "description": "Consumer goods and retail companies",
+        "tickers": ['TSLA', 'AMZN', 'WMT', 'HD', 'TGT', 'NKE', 'SBUX', 'MCD', 'COST', 'LOW']
+    },
+    "💊 Healthcare": {
+        "description": "Healthcare and biotech companies",
+        "tickers": ['JNJ', 'UNH', 'LLY', 'ABBV', 'MRK', 'PFE', 'TMO', 'ABT', 'DHR', 'ISRG']
+    },
+    "🏭 Industrials": {
+        "description": "Manufacturing and industrial companies",
+        "tickers": ['BA', 'CAT', 'GE', 'HON', 'UPS', 'RTX', 'LMT', 'MMM', 'DE', 'EMR']
+    },
+    "⚡ Energy": {
+        "description": "Oil, gas, and renewable energy companies",
+        "tickers": ['XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL']
+    },
+    "🏠 Real Estate": {
+        "description": "REITs and real estate companies",
+        "tickers": ['AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'SPG', 'O', 'WELL', 'DLR', 'AVB']
+    },
+    "💳 Financials": {
+        "description": "Banks, insurance, and financial services",
+        "tickers": ['JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'SCHW', 'AXP', 'USB']
+    },
+    "🎮 Entertainment": {
+        "description": "Gaming, streaming, and entertainment",
+        "tickers": ['NFLX', 'DIS', 'RBLX', 'EA', 'TTWO', 'DKNG', 'WBD', 'PARA', 'LYV', 'SPOT']
+    },
+    "🔐 Cybersecurity": {
+        "description": "Cybersecurity and data protection",
+        "tickers": ['CRWD', 'PANW', 'ZS', 'FTNT', 'S', 'OKTA', 'NET', 'CHKP', 'CYBR', 'RPD']
+    },
+    "☁️ Cloud Computing": {
+        "description": "Cloud infrastructure and services",
+        "tickers": ['MSFT', 'AMZN', 'GOOGL', 'SNOW', 'CRM', 'ORCL', 'NOW', 'DDOG', 'MDB', 'NET']
+    },
+    "🔋 Clean Energy": {
+        "description": "Renewable energy and EVs",
+        "tickers": ['TSLA', 'ENPH', 'SEDG', 'FSLR', 'NEE', 'BEP', 'PLUG', 'RUN', 'NOVA', 'RIVN']
+    }
+}
+
+# Function to get stocks by category
 @st.cache_data(ttl=3600)  # Cache for 1 hour
-def get_trending_stocks():
-    """Get trending stocks from various categories"""
+def get_stocks_by_category(category_name):
+    """Get stocks for a specific category"""
     try:
-        # Popular tickers across different categories
-        gainers_tickers = ['NVDA', 'AMD', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META']
-        growth_tickers = ['PLTR', 'SNOW', 'DKNG', 'COIN', 'RBLX', 'U', 'CELH', 'MNDY']
-        value_tickers = ['BRK-B', 'JPM', 'V', 'MA', 'JNJ', 'PG', 'KO', 'WMT']
-        
-        all_tickers = list(set(gainers_tickers + growth_tickers + value_tickers))
+        tickers = STOCK_CATEGORIES[category_name]["tickers"]
         
         stocks_data = []
-        for ticker in all_tickers:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for idx, ticker in enumerate(tickers):
             try:
+                status_text.text(f"Loading {ticker}... ({idx + 1}/{len(tickers)})")
                 stock = yf.Ticker(ticker)
                 hist = stock.history(period="5d")
                 info = stock.info
@@ -45,6 +120,7 @@ def get_trending_stocks():
                     prev_price = hist['Close'].iloc[0]
                     change_pct = ((current_price - prev_price) / prev_price) * 100
                     volume = hist['Volume'].iloc[-1]
+                    avg_volume = hist['Volume'].mean()
                     
                     stocks_data.append({
                         'Ticker': ticker,
@@ -52,15 +128,21 @@ def get_trending_stocks():
                         'Price': current_price,
                         'Change %': change_pct,
                         'Volume': volume,
+                        'Avg Volume': avg_volume,
                         'Market Cap': info.get('marketCap', 0),
-                        'Sector': info.get('sector', 'N/A')
+                        'Sector': info.get('sector', 'N/A'),
+                        'PE Ratio': info.get('trailingPE', None)
                     })
+                progress_bar.progress((idx + 1) / len(tickers))
             except:
                 continue
         
+        progress_bar.empty()
+        status_text.empty()
+        
         return pd.DataFrame(stocks_data)
     except Exception as e:
-        st.error(f"Error fetching trending stocks: {str(e)}")
+        st.error(f"Error fetching stocks: {str(e)}")
         return pd.DataFrame()
 
 # Function to calculate SMA
@@ -123,8 +205,24 @@ def get_simple_insights(current_price, sma_short_val, sma_long_val, rsi_val, mac
 
 # ============= DISCOVER STOCKS PAGE =============
 if page == "🔍 Discover Stocks":
-    st.header("🔥 Discover Hot Stocks")
-    st.markdown("Find trending stocks, top gainers, and interesting opportunities")
+    st.header("🔥 Discover Stocks by Category")
+    st.markdown("Explore curated lists of stocks across different categories and market segments")
+    
+    # Category selection
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        selected_category = st.selectbox(
+            "Choose a category:",
+            options=list(STOCK_CATEGORIES.keys()),
+            format_func=lambda x: x
+        )
+    with col2:
+        if st.button("🔄 Refresh Data", type="primary"):
+            st.cache_data.clear()
+            st.rerun()
+    
+    # Display category description
+    st.info(f"**{selected_category}**: {STOCK_CATEGORIES[selected_category]['description']}")
     
     # Filters
     col1, col2, col3 = st.columns(3)
@@ -132,15 +230,13 @@ if page == "🔍 Discover Stocks":
         min_change = st.slider("Min Price Change %", -20.0, 20.0, -10.0, 1.0)
     with col2:
         sector_filter = st.selectbox("Sector", ["All", "Technology", "Healthcare", "Financial Services", 
-                                                  "Consumer Cyclical", "Communication Services", "Industrials"])
+                                                  "Consumer Cyclical", "Communication Services", "Industrials",
+                                                  "Energy", "Real Estate", "Consumer Defensive"])
     with col3:
         sort_by = st.selectbox("Sort By", ["Change %", "Volume", "Market Cap", "Price"])
     
-    if st.button("🔄 Refresh Data", type="primary"):
-        st.cache_data.clear()
-    
-    with st.spinner("Loading trending stocks..."):
-        df_stocks = get_trending_stocks()
+    with st.spinner(f"Loading {selected_category}..."):
+        df_stocks = get_stocks_by_category(selected_category)
     
     if not df_stocks.empty:
         # Apply filters
@@ -172,7 +268,7 @@ if page == "🔍 Discover Stocks":
         st.markdown("---")
         
         # Display stocks in cards
-        st.subheader("📋 Stocks List")
+        st.subheader(f"📋 {selected_category} Stocks")
         
         # Format the dataframe for display
         df_display = df_filtered.copy()
@@ -183,9 +279,15 @@ if page == "🔍 Discover Stocks":
             lambda x: f"${x/1e9:.1f}B" if x > 0 else "N/A"
         )
         
+        # Add PE Ratio if available
+        if 'PE Ratio' in df_display.columns:
+            df_display['PE Ratio'] = df_display['PE Ratio'].apply(
+                lambda x: f"{x:.2f}" if pd.notna(x) else "N/A"
+            )
+        
         # Display as interactive table
         st.dataframe(
-            df_display,
+            df_display[['Ticker', 'Name', 'Price', 'Change %', 'Volume', 'Market Cap', 'Sector', 'PE Ratio']],
             use_container_width=True,
             hide_index=True,
             column_config={
@@ -196,6 +298,7 @@ if page == "🔍 Discover Stocks":
                 "Volume": st.column_config.TextColumn("Volume", width="small"),
                 "Market Cap": st.column_config.TextColumn("Market Cap", width="small"),
                 "Sector": st.column_config.TextColumn("Sector", width="medium"),
+                "PE Ratio": st.column_config.TextColumn("P/E", width="small"),
             }
         )
         
@@ -218,12 +321,37 @@ if page == "🔍 Discover Stocks":
     with st.expander("🔍 Custom Stock Screener"):
         st.markdown("""
         ### Add Your Own Tickers
-        Enter stock symbols separated by commas to add them to the discovery list.
+        Enter stock symbols separated by commas to create a custom watchlist.
         """)
         custom_tickers = st.text_input("Enter tickers (e.g., PLTR, SOFI, RIVN):")
-        if custom_tickers and st.button("Add to List"):
-            st.success(f"Custom tickers will be added: {custom_tickers}")
-            st.info("Refresh the page to see your custom stocks in the list!")
+        if custom_tickers and st.button("Load Custom List"):
+            custom_list = [t.strip().upper() for t in custom_tickers.split(',')]
+            st.session_state['custom_tickers'] = custom_list
+            st.success(f"Loading {len(custom_list)} custom tickers...")
+            st.rerun()
+        
+        # Show custom list if exists
+        if 'custom_tickers' in st.session_state:
+            st.markdown("#### Your Custom List:")
+            st.write(", ".join(st.session_state['custom_tickers']))
+            if st.button("Clear Custom List"):
+                del st.session_state['custom_tickers']
+                st.rerun()
+    
+    # Quick category navigation
+    st.markdown("---")
+    st.subheader("🚀 Quick Category Navigation")
+    st.markdown("*Click on any category to explore:*")
+    
+    cols = st.columns(4)
+    popular_categories = ["🔥 Trending Now", "📈 Top Gainers", "🤖 AI & Tech", "💰 Blue Chips", 
+                         "💎 High Growth", "⚡ Momentum", "💵 Dividend Payers", "🔋 Clean Energy"]
+    
+    for idx, cat in enumerate(popular_categories):
+        with cols[idx % 4]:
+            if st.button(cat, key=f"quick_{cat}", use_container_width=True):
+                st.session_state['selected_category'] = cat
+                st.rerun()
 
 # ============= ANALYZE STOCK PAGE =============
 else:
@@ -508,4 +636,4 @@ else:
 # Footer
 st.markdown("---")
 st.caption(f"Data updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Data source: Yahoo Finance")
-st.caption("⚠️ Disclaimer: This is for educational purposes only. Not financial advice. Always do your own research before investing.")
+st.caption("⚠️ Disclaimer: This is for educational purposes only. Not financial advice. Always do your own research before investing.")git 
