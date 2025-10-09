@@ -396,15 +396,18 @@ def get_simple_insights(current_price, sma_short_val, sma_long_val, rsi_val, mac
 
 # ============= DISCOVER STOCKS PAGE =============
 if page == "🔍 Discover Stocks":
-    st.header("🔥 Discover Stocks by Category")
-    st.markdown("Explore curated lists of stocks across different categories and market segments")
+    st.header("🔥 Discover Stocks")
+    st.markdown("Real-time stock discovery with calculated metrics from 300+ liquid stocks")
+    
+    # Combine all categories
+    all_categories = {**DYNAMIC_CATEGORIES, **STATIC_CATEGORIES}
     
     # Category selection
     col1, col2 = st.columns([2, 1])
     with col1:
         selected_category = st.selectbox(
             "Choose a category:",
-            options=list(STOCK_CATEGORIES.keys()),
+            options=list(all_categories.keys()),
             format_func=lambda x: x
         )
     with col2:
@@ -412,22 +415,45 @@ if page == "🔍 Discover Stocks":
             st.cache_data.clear()
             st.rerun()
     
-    # Display category description
-    st.info(f"**{selected_category}**: {STOCK_CATEGORIES[selected_category]['description']}")
+    # Display category info
+    category_info = all_categories[selected_category]
+    category_type = category_info['type']
+    
+    if category_type == "dynamic":
+        st.info(f"**{selected_category}**: {category_info['description']} | ⚡ Calculated in real-time from {len(STOCK_UNIVERSE)} stocks")
+    else:
+        st.info(f"**{selected_category}**: {category_info['description']}")
+    
+    # Load data based on category type
+    if category_type == "dynamic":
+        with st.spinner(f"Analyzing {len(STOCK_UNIVERSE)} stocks... This may take 2-3 minutes on first load..."):
+            df_universe = calculate_stock_universe()
+            
+            if not df_universe.empty:
+                # Apply category filter
+                df_stocks = filter_by_category(df_universe, category_info['filter'])
+                
+                # Show last updated time
+                st.caption(f"✅ Data calculated from {len(df_universe)} stocks | Cached for 30 minutes")
+            else:
+                st.error("Unable to load stock data")
+                st.stop()
+    else:
+        # Static category
+        with st.spinner(f"Loading {selected_category}..."):
+            df_stocks = get_static_category_stocks(category_info['tickers'])
     
     # Filters
+    st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        min_change = st.slider("Min Price Change %", -20.0, 20.0, -10.0, 1.0)
+        min_change = st.slider("Min Price Change %", -50.0, 50.0, -50.0, 1.0)
     with col2:
         sector_filter = st.selectbox("Sector", ["All", "Technology", "Healthcare", "Financial Services", 
                                                   "Consumer Cyclical", "Communication Services", "Industrials",
-                                                  "Energy", "Real Estate", "Consumer Defensive"])
+                                                  "Energy", "Real Estate", "Consumer Defensive", "Basic Materials"])
     with col3:
-        sort_by = st.selectbox("Sort By", ["Change %", "Volume", "Market Cap", "Price"])
-    
-    with st.spinner(f"Loading {selected_category}..."):
-        df_stocks = get_stocks_by_category(selected_category)
+        sort_by = st.selectbox("Sort By", ["Change %", "Volume Ratio", "Market Cap", "Price", "RSI"])
     
     if not df_stocks.empty:
         # Apply filters
@@ -437,7 +463,7 @@ if page == "🔍 Discover Stocks":
             df_filtered = df_filtered[df_filtered['Sector'] == sector_filter]
         
         # Sort
-        ascending = False if sort_by == "Change %" else False
+        ascending = True if sort_by == "RSI" else False
         df_filtered = df_filtered.sort_values(by=sort_by, ascending=ascending)
         
         # Display summary stats
@@ -453,44 +479,66 @@ if page == "🔍 Discover Stocks":
         with col3:
             st.metric("Stocks Found", len(df_filtered))
         with col4:
-            total_volume = df_filtered['Volume'].sum()
-            st.metric("Total Volume", f"{total_volume/1e9:.2f}B")
+            if 'Volume Ratio' in df_filtered.columns:
+                avg_vol_ratio = df_filtered['Volume Ratio'].mean()
+                st.metric("Avg Vol Ratio", f"{avg_vol_ratio:.2f}x")
+            else:
+                total_volume = df_filtered['Volume'].sum()
+                st.metric("Total Volume", f"{total_volume/1e9:.2f}B")
         
         st.markdown("---")
         
-        # Display stocks in cards
-        st.subheader(f"📋 {selected_category} Stocks")
+        # Display stocks table
+        st.subheader(f"📋 {selected_category}")
         
         # Format the dataframe for display
         df_display = df_filtered.copy()
         df_display['Price'] = df_display['Price'].apply(lambda x: f"${x:.2f}")
         df_display['Change %'] = df_display['Change %'].apply(lambda x: f"{x:+.2f}%")
-        df_display['Volume'] = df_display['Volume'].apply(lambda x: f"{x/1e6:.1f}M")
+        df_display['Volume'] = df_display['Volume'].apply(lambda x: f"{x/1e6:.1f}M" if x > 0 else "N/A")
         df_display['Market Cap'] = df_display['Market Cap'].apply(
             lambda x: f"${x/1e9:.1f}B" if x > 0 else "N/A"
         )
         
-        # Add PE Ratio if available
+        # Add conditional columns
+        display_columns = ['Ticker', 'Name', 'Price', 'Change %', 'Volume', 'Market Cap', 'Sector']
+        column_config = {
+            "Ticker": st.column_config.TextColumn("Ticker", width="small"),
+            "Name": st.column_config.TextColumn("Company", width="medium"),
+            "Price": st.column_config.TextColumn("Price", width="small"),
+            "Change %": st.column_config.TextColumn("5-Day Change", width="small"),
+            "Volume": st.column_config.TextColumn("Volume", width="small"),
+            "Market Cap": st.column_config.TextColumn("Market Cap", width="small"),
+            "Sector": st.column_config.TextColumn("Sector", width="medium"),
+        }
+        
         if 'PE Ratio' in df_display.columns:
             df_display['PE Ratio'] = df_display['PE Ratio'].apply(
-                lambda x: f"{x:.2f}" if pd.notna(x) else "N/A"
+                lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A"
             )
+            display_columns.append('PE Ratio')
+            column_config['PE Ratio'] = st.column_config.TextColumn("P/E", width="small")
         
-        # Display as interactive table
+        if 'Volume Ratio' in df_display.columns:
+            df_display['Volume Ratio'] = df_display['Volume Ratio'].apply(
+                lambda x: f"{x:.2f}x" if x > 0 else "N/A"
+            )
+            display_columns.append('Volume Ratio')
+            column_config['Volume Ratio'] = st.column_config.TextColumn("Vol Ratio", width="small")
+        
+        if 'RSI' in df_display.columns:
+            df_display['RSI'] = df_display['RSI'].apply(
+                lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
+            )
+            display_columns.append('RSI')
+            column_config['RSI'] = st.column_config.TextColumn("RSI", width="small")
+        
+        # Display table
         st.dataframe(
-            df_display[['Ticker', 'Name', 'Price', 'Change %', 'Volume', 'Market Cap', 'Sector', 'PE Ratio']],
+            df_display[display_columns],
             use_container_width=True,
             hide_index=True,
-            column_config={
-                "Ticker": st.column_config.TextColumn("Ticker", width="small"),
-                "Name": st.column_config.TextColumn("Company", width="medium"),
-                "Price": st.column_config.TextColumn("Price", width="small"),
-                "Change %": st.column_config.TextColumn("5-Day Change", width="small"),
-                "Volume": st.column_config.TextColumn("Volume", width="small"),
-                "Market Cap": st.column_config.TextColumn("Market Cap", width="small"),
-                "Sector": st.column_config.TextColumn("Sector", width="medium"),
-                "PE Ratio": st.column_config.TextColumn("P/E", width="small"),
-            }
+            column_config=column_config
         )
         
         # Quick analyze section
@@ -506,44 +554,34 @@ if page == "🔍 Discover Stocks":
             st.session_state['selected_ticker'] = selected_ticker
             st.rerun()
     else:
-        st.warning("Unable to load stock data. Please try again later.")
-    
-    # Stock screener section
-    with st.expander("🔍 Custom Stock Screener"):
-        st.markdown("""
-        ### Add Your Own Tickers
-        Enter stock symbols separated by commas to create a custom watchlist.
-        """)
-        custom_tickers = st.text_input("Enter tickers (e.g., PLTR, SOFI, RIVN):")
-        if custom_tickers and st.button("Load Custom List"):
-            custom_list = [t.strip().upper() for t in custom_tickers.split(',')]
-            st.session_state['custom_tickers'] = custom_list
-            st.success(f"Loading {len(custom_list)} custom tickers...")
-            st.rerun()
-        
-        # Show custom list if exists
-        if 'custom_tickers' in st.session_state:
-            st.markdown("#### Your Custom List:")
-            st.write(", ".join(st.session_state['custom_tickers']))
-            if st.button("Clear Custom List"):
-                del st.session_state['custom_tickers']
-                st.rerun()
+        st.warning("No stocks found matching your criteria. Try adjusting the filters.")
     
     # Quick category navigation
     st.markdown("---")
     st.subheader("🚀 Quick Category Navigation")
-    st.markdown("*Click on any category to explore:*")
     
-    cols = st.columns(4)
-    popular_categories = ["🔥 Trending Now", "📈 Top Gainers", "🤖 AI & Tech", "💰 Blue Chips", 
-                         "💎 High Growth", "⚡ Momentum", "💵 Dividend Payers", "🔋 Clean Energy"]
+    tab1, tab2 = st.tabs(["🔥 Real-Time Calculated", "📁 Curated Lists"])
     
-    for idx, cat in enumerate(popular_categories):
-        with cols[idx % 4]:
-            if st.button(cat, key=f"quick_{cat}", use_container_width=True):
-                st.session_state['selected_category'] = cat
-                st.rerun()
-
+    with tab1:
+        st.markdown("*Dynamic categories calculated from live market data:*")
+        cols = st.columns(4)
+        dynamic_cats = list(DYNAMIC_CATEGORIES.keys())
+        for idx, cat in enumerate(dynamic_cats):
+            with cols[idx % 4]:
+                if st.button(cat, key=f"quick_{cat}", use_container_width=True):
+                    st.session_state['selected_category'] = cat
+                    st.rerun()
+    
+    with tab2:
+        st.markdown("*Pre-selected stock lists by theme:*")
+        cols = st.columns(4)
+        static_cats = list(STATIC_CATEGORIES.keys())
+        for idx, cat in enumerate(static_cats):
+            with cols[idx % 4]:
+                if st.button(cat, key=f"quick_{cat}", use_container_width=True):
+                    st.session_state['selected_category'] = cat
+                    st.rerun()
+                    
 # ============= ANALYZE STOCK PAGE =============
 else:
     st.header("📊 Stock Technical Analysis")
